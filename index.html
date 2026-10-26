@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyjo Multijoueur</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Inclusion de Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- ÉCRAN D'ACCUEIL -->
+        <div id="screen-home" class="screen active">
+            <div class="card-container-title">
+                <h1>SKYJO MULTIJOUEUR</h1>
+            </div>
+            <div class="menu-box">
+                <input type="text" id="username-input" placeholder="Ton pseudo..." maxlength="12">
+                <div class="menu-buttons">
+                    <button id="btn-create" class="btn primary">Créer une partie</button>
+                    <div class="join-section">
+                        <input type="text" id="room-code-input" placeholder="CODE (ex: 68J7)" maxlength="4">
+                        <button id="btn-join" class="btn secondary">Rejoindre</button>
+                    </div>
+                </div>
+                <p id="error-msg" class="error"></p>
+            </div>
+        </div>
+
+        <!-- SALON D'ATTENTE (LOBBY) -->
+        <div id="screen-lobby" class="screen">
+            <h2>Salon : <span id="display-room-code">----</span></h2>
+            <div class="lobby-info">
+                <h3>Joueurs connectés :</h3>
+                <ul id="players-list"></ul>
+            </div>
+            <button id="btn-start" class="btn primary" style="display:none;">Lancer la partie</button>
+            <p id="wait-msg">En attente de l'hôte pour lancer la partie...</p>
+        </div>
+
+        <!-- ÉCRAN DE JEU -->
+        <div id="screen-game" class="screen">
+            <header class="game-header">
+                <div class="game-info">Salon: <span id="hud-room">----</span> | Tour de: <span id="hud-turn" class="highlight">---</span></div>
+                <div class="score-board" id="score-board"></div>
+            </header>
+
+            <main class="game-main">
+                <!-- Zone Centrale : Pioche et Défausse -->
+                <div class="center-board">
+                    <div class="deck-area">
+                        <div class="card-pile" id="draw-pile" title="Pioche">
+                            <div class="card-back">SKYJO</div>
+                        </div>
+                        <div class="card-pile" id="discard-pile" title="Défausse">
+                            <!-- Carte active de la défausse -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grille du joueur (12 cartes : 3 lignes x 4 colonnes) -->
+                <div class="player-grid-container">
+                    <h3>Ta Grille (3x4)</h3>
+                    <div id="player-grid" class="grid-3x4"></div>
+                </div>
+
+                <!-- Autres joueurs -->
+                <div class="opponent-container" id="opponent-container">
+                    <h3>Autres joueurs</h3>
+                    <div id="opponents-list" class="opponents-flex"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
