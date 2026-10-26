@@ -54,7 +54,7 @@ document.getElementById('btn-create').addEventListener('click', () => {
     }
     errorMsg.textContent = "";
     isHost = true;
-    socket.emplace('create-room', username); // Événement de création
+    socket.emit('create-room', username); // Corrigé ici (emit au lieu de emplace)
 });
 
 // Bouton Rejoindre une partie
