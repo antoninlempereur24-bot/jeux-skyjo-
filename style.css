@@ -1,0 +1,300 @@
+:root {
+    --primary: #008080; /* Bleu Canard */
+    --primary-dark: #005f5f;
+    --accent: #f4a261;
+    --bg-color: #0f172a;
+    --card-bg: #1e293b;
+    --text-color: #f8fafc;
+    --error-color: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#app {
+    width: 100%;
+    max-width: 800px;
+    padding: 20px;
+}
+
+.screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* Écran d'accueil */
+.card-container-title h1 {
+    font-size: 2.5rem;
+    color: var(--primary);
+    margin-bottom: 2rem;
+    text-align: center;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.menu-box {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+input[type="text"] {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: white;
+    font-size: 1rem;
+    text-align: center;
+}
+
+input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.join-section {
+    display: flex;
+    gap: 0.5px;
+}
+
+.join-section input {
+    flex: 2;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.join-section button {
+    flex: 1;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.btn {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn.primary {
+    background-color: var(--primary);
+    color: white;
+}
+
+.btn.primary:hover {
+    background-color: var(--primary-dark);
+}
+
+.btn.secondary {
+    background-color: #475569;
+    color: white;
+}
+
+.btn.secondary:hover {
+    background-color: #334155;
+}
+
+.error {
+    color: var(--error-color);
+    font-size: 0.9rem;
+    text-align: center;
+    min-height: 20px;
+}
+
+/* Écran Salon (Lobby) */
+#screen-lobby h2 {
+    margin-bottom: 1.5rem;
+}
+
+#display-room-code {
+    background: var(--primary);
+    padding: 4px 12px;
+    border-radius: 6px;
+    letter-spacing: 2px;
+}
+
+.lobby-info {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 1.5rem;
+}
+
+.lobby-info ul {
+    list-style: none;
+    margin-top: 10px;
+}
+
+.lobby-info li {
+    padding: 8px;
+    border-bottom: 1px solid #334155;
+}
+
+/* Écran de Jeu */
+.game-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    background: var(--card-bg);
+    padding: 10px 15px;
+    border-radius: 8px;
+}
+
+.highlight {
+    color: var(--accent);
+    font-weight: bold;
+}
+
+.game-main {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.center-board {
+    display: flex;
+    gap: 2rem;
+}
+
+.deck-area {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.card-pile {
+    width: 70px;
+    height: 100px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 2px dashed #64748b;
+    background: #1e293b;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+.card-back {
+    background: var(--primary-dark);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #cbd5e1;
+}
+
+/* Grille 3x4 du joueur */
+.player-grid-container {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.grid-3x4 {
+    display: grid;
+    grid-template-columns: repeat(4, 65px);
+    grid-template-rows: repeat(3, 90px);
+    gap: 8px;
+}
+
+.card-slot {
+    width: 65px;
+    height: 90px;
+    border-radius: 6px;
+    background: #0f172a;
+    border: 2px solid #334155;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    transition: transform 0.1s, border-color 0.1s;
+}
+
+.card-slot:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.card-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.card-slot.hidden {
+    background: var(--primary-dark);
+}
+
+/* Adversaires */
+.opponent-container {
+    width: 100%;
+    background: var(--card-bg);
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.opponents-flex {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    margin-top: 5px;
+}
+
+.opponent-card {
+    background: #0f172a;
+    padding: 8px;
+    border-radius: 6px;
+    min-width: 120px;
+    font-size: 0.85rem;
+}
