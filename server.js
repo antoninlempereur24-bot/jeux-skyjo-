@@ -32,7 +32,6 @@ function createDeck() {
             deck.push(val);
         }
     }
-    // Mélange Fisher-Yates
     for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -41,7 +40,7 @@ function createDeck() {
 }
 
 io.on('connection', (socket) => {
-    console.log(`Utilisateur connecté : ${socket.id}`);
+    console.log(`Connexion : ${socket.id}`);
 
     socket.on('create-room', (username) => {
         const roomCode = generateRoomCode();
@@ -61,11 +60,7 @@ io.on('connection', (socket) => {
         };
 
         socket.join(roomCode);
-        socket.emit('room-joined', {
-            roomCode,
-            players: rooms[roomCode].players,
-            hostId: socket.id
-        });
+        socket.emit('room-joined', { roomCode, players: rooms[roomCode].players, hostId: socket.id });
     });
 
     socket.on('join-room', ({ username, code }) => {
@@ -82,16 +77,8 @@ io.on('connection', (socket) => {
         room.players.push({ id: socket.id, username });
         socket.join(code);
 
-        io.to(code).emit('update-players', {
-            players: room.players,
-            hostId: room.hostId
-        });
-
-        socket.emit('room-joined', {
-            roomCode: code,
-            players: room.players,
-            hostId: room.hostId
-        });
+        io.to(code).emit('update-players', { players: room.players, hostId: room.hostId });
+        socket.emit('room-joined', { roomCode: code, players: room.players, hostId: room.hostId });
     });
 
     socket.on('start-game', (roomCode) => {
@@ -124,7 +111,6 @@ io.on('connection', (socket) => {
         const { action, index } = data;
         const playerId = socket.id;
 
-        // Phase 1 : Révéler 2 cartes au départ
         if (room.status === 'initializing') {
             const grid = room.playersGrids[playerId];
             if (grid && grid[index] && !grid[index].isRevealed) {
@@ -146,12 +132,10 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Phase 2 : Tour par tour officiel
         if (room.status === 'playing') {
             const currentTurnPlayer = room.players[room.turnIndex];
-            if (currentTurnPlayer.id !== playerId) return; // Ce n'est pas ton tour
+            if (!currentTurnPlayer || currentTurnPlayer.id !== playerId) return;
 
-            // Étape A : Piocher
             if (room.turnPhase === 'draw') {
                 if (action === 'draw-deck') {
                     if (room.deck.length === 0) {
@@ -179,7 +163,6 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // Étape B : Action avec la carte piochée
             if (room.turnPhase === 'action') {
                 const grid = room.playersGrids[playerId];
 
@@ -217,10 +200,7 @@ io.on('connection', (socket) => {
                 delete rooms[code];
             } else if (room.hostId === socket.id) {
                 room.hostId = room.players[0].id;
-                io.to(code).emit('update-players', {
-                    players: room.players,
-                    hostId: room.hostId
-                });
+                io.to(code).emit('update-players', { players: room.players, hostId: room.hostId });
             }
         }
     });
@@ -230,7 +210,7 @@ function nextTurn(room, roomCode) {
     let gameEnded = false;
     room.players.forEach(p => {
         const grid = room.playersGrids[p.id];
-        if (grid.every(c => c.isRevealed)) {
+        if (grid && grid.every(c => c.isRevealed)) {
             room.status = 'finished';
             gameEnded = true;
         }
@@ -250,9 +230,11 @@ function calculateScores(room) {
     const scores = {};
     room.players.forEach(p => {
         let total = 0;
-        room.playersGrids[p.id].forEach(c => {
-            total += parseInt(c.value, 10);
-        });
+        if (room.playersGrids[p.id]) {
+            room.playersGrids[p.id].forEach(c => {
+                total += parseInt(c.value, 10);
+            });
+        }
         scores[p.username] = total;
     });
     return scores;
@@ -264,6 +246,14 @@ function sendGameState(roomCode) {
 
     const currentTurnPlayer = room.players[room.turnIndex];
 
+    const sanitizedGrids = {};
+    for (const pId in room.playersGrids) {
+        sanitizedGrids[pId] = room.playersGrids[pId].map(card => ({
+            isRevealed: card.isRevealed,
+            value: card.isRevealed ? card.value : null
+        }));
+    }
+
     const gameState = {
         status: room.status,
         topDiscard: room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null,
@@ -272,7 +262,7 @@ function sendGameState(roomCode) {
         turnPhase: room.turnPhase,
         drawnCard: room.drawnCard,
         drawnSource: room.drawnSource,
-        playersGrids: room.playersGrids,
+        playersGrids: sanitizedGrids,
         players: room.players,
         initRevealedCount: room.initRevealedCount
     };
