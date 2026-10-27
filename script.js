@@ -140,29 +140,27 @@ function renderGame(state) {
     const isMyTurn = (state.turnPlayerId === socket.id);
     const myGrid = state.playersGrids[socket.id] || [];
 
-    // Affichage des instructions en haut de l'écran
     if (state.status === 'initializing') {
         const revealed = state.initRevealedCount[socket.id] || 0;
         if (revealed < 2) {
-            instructionEl.textContent = `Début de partie : Clique sur ${2 - revealed} carte(s) de ta grille pour les révéler.`;
+            instructionEl.textContent = `Début : Clique sur ${2 - revealed} carte(s) pour les révéler.`;
         } else {
             instructionEl.textContent = "En attente des autres joueurs...";
         }
     } else if (state.status === 'playing') {
         if (isMyTurn) {
             if (state.turnPhase === 'draw') {
-                instructionEl.textContent = "C'est TON TOUR ! Pioche une carte dans la pioche (gauche) ou dans la défausse (droite).";
+                instructionEl.textContent = "Ton tour : Pioche (gauche) ou Défausse (droite).";
             } else if (state.turnPhase === 'action') {
-                instructionEl.textContent = "Clique sur une carte de ta grille pour y placer ta carte piochée.";
+                instructionEl.textContent = "Clique sur une carte de ta grille pour y placer ta carte.";
             } else if (state.turnPhase === 'reveal-one') {
-                instructionEl.textContent = "Tu as jeté ta carte piochée. Clique sur une carte cachée de ta grille pour la révéler !";
+                instructionEl.textContent = "Choisis une carte cachée de ta grille à révéler.";
             }
         } else {
-            instructionEl.textContent = `Tour de ${state.turnPlayerName}... Patientez.`;
+            instructionEl.textContent = `Tour de ${state.turnPlayerName}...`;
         }
     }
 
-    // Défausse
     discardPile.innerHTML = '';
     if (state.topDiscard) {
         discardPile.innerHTML = `<img src="${CARD_DATA[state.topDiscard]}" alt="Défausse">`;
@@ -170,10 +168,9 @@ function renderGame(state) {
         discardPile.innerHTML = `<div class="card-placeholder">Vide</div>`;
     }
 
-    // Carte en main
     if (state.drawnCard && isMyTurn && state.turnPhase === 'action') {
         drawnCardArea.style.display = 'flex';
-        drawnCardSlot.innerHTML = `<img src="${CARD_DATA[state.drawnCard]}" alt="Carte piochée">`;
+        drawnCardSlot.innerHTML = `<img src="${CARD_DATA[state.drawnCard]}" alt="En main">`;
         if (state.drawnSource === 'deck') {
             btnDiscardDrawn.style.display = 'block';
         } else {
@@ -183,7 +180,6 @@ function renderGame(state) {
         drawnCardArea.style.display = 'none';
     }
 
-    // Grille 3x4
     const gridEl = document.getElementById('player-grid');
     gridEl.innerHTML = '';
 
@@ -191,7 +187,7 @@ function renderGame(state) {
         const slot = document.createElement('div');
         slot.className = `card-slot ${card.isRevealed ? '' : 'hidden'}`;
 
-        if (card.isRevealed) {
+        if (card.isRevealed && card.value && CARD_DATA[card.value]) {
             slot.innerHTML = `<img src="${CARD_DATA[card.value]}" alt="${card.value}">`;
         } else {
             slot.innerHTML = `<div class="card-back">?</div>`;
@@ -216,7 +212,6 @@ function renderGame(state) {
         gridEl.appendChild(slot);
     });
 
-    // Adversaires
     const opponentsContainer = document.getElementById('opponents-list');
     opponentsContainer.innerHTML = '';
     state.players.forEach(p => {
