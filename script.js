@@ -1,6 +1,5 @@
 const socket = io();
 
-// Table de correspondance avec tes liens GitHub
 const CARD_DATA = {
     "-4": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/1B864298-6436-4BE8-9E4D-9774B5E905F2.PNG?raw=true",
     "-2": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/D06DD7EA-9AEC-497D-A931-8F6D0EF24C46.png?raw=true",
@@ -111,17 +110,17 @@ socket.on('game-started', () => {
     switchScreen('game');
 });
 
-drawPile.addEventListener('click', () => {
+drawPile.onclick = () => {
     socket.emit('player-action', { roomCode: currentRoom, action: 'draw-deck' });
-});
+};
 
-discardPile.addEventListener('click', () => {
+discardPile.onclick = () => {
     socket.emit('player-action', { roomCode: currentRoom, action: 'draw-discard' });
-});
+};
 
-btnDiscardDrawn.addEventListener('click', () => {
+btnDiscardDrawn.onclick = () => {
     socket.emit('player-action', { roomCode: currentRoom, action: 'discard-drawn' });
-});
+};
 
 socket.on('game-state-update', (state) => {
     renderGame(state);
@@ -144,25 +143,24 @@ function renderGame(state) {
     if (state.status === 'initializing') {
         const revealed = state.initRevealedCount[socket.id] || 0;
         if (revealed < 2) {
-            instructionEl.textContent = `Début : Clique sur ${2 - revealed} carte(s) de ta grille pour les révéler.`;
+            instructionEl.textContent = `Début : Clique sur ${2 - revealed} carte(s) pour les révéler.`;
         } else {
             instructionEl.textContent = "En attente des autres joueurs...";
         }
     } else if (state.status === 'playing') {
         if (isMyTurn) {
             if (state.turnPhase === 'draw') {
-                instructionEl.textContent = "C'est ton tour : Pioche (gauche) ou Défausse (droite).";
+                instructionEl.textContent = "Ton tour : Pioche (gauche) ou Défausse (droite).";
             } else if (state.turnPhase === 'action') {
                 instructionEl.textContent = "Clique sur une carte de ta grille pour y placer ta carte.";
             } else if (state.turnPhase === 'reveal-one') {
                 instructionEl.textContent = "Choisis une carte cachée de ta grille à révéler.";
             }
         } else {
-            instructionEl.textContent = `Tour de ${state.turnPlayerName}... Patientez.`;
+            instructionEl.textContent = `Tour de ${state.turnPlayerName}...`;
         }
     }
 
-    // Affichage de la défausse avec sécurité image + texte
     discardPile.innerHTML = '';
     if (state.topDiscard) {
         const imgUrl = CARD_DATA[state.topDiscard] || '';
@@ -171,7 +169,6 @@ function renderGame(state) {
         discardPile.innerHTML = `<div class="card-placeholder">Vide</div>`;
     }
 
-    // Affichage de la carte en main
     if (state.drawnCard && isMyTurn && state.turnPhase === 'action') {
         drawnCardArea.style.display = 'flex';
         const imgUrl = CARD_DATA[state.drawnCard] || '';
@@ -185,7 +182,6 @@ function renderGame(state) {
         drawnCardArea.style.display = 'none';
     }
 
-    // Affichage de la grille 3x4 du joueur avec sécurité image + texte
     const gridEl = document.getElementById('player-grid');
     gridEl.innerHTML = '';
 
@@ -200,7 +196,7 @@ function renderGame(state) {
             slot.innerHTML = `<div class="card-back">?</div>`;
         }
 
-        // Gestion du clic / tap tactile
+        // Clic et tactile réactifs
         slot.onclick = () => {
             if (state.status === 'initializing') {
                 if (!card.isRevealed) {
@@ -220,7 +216,6 @@ function renderGame(state) {
         gridEl.appendChild(slot);
     });
 
-    // Aperçu des adversaires
     const opponentsContainer = document.getElementById('opponents-list');
     opponentsContainer.innerHTML = '';
     state.players.forEach(p => {
