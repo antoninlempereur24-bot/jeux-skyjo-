@@ -74,7 +74,27 @@ io.on('connection', (socket) => {
             return;
         }
 
-        room.players.push({ id: socket.id, username });
+        // Si le joueur rafraîchit, on met à jour son ID au lieu de dupliquer
+        const existingPlayer = room.players.find(p => p.username.toLowerCase() === username.toLowerCase());
+        if (existingPlayer) {
+            // Transférer l'ancienne grille vers le nouveau socket ID
+            const oldId = existingPlayer.id;
+            existingPlayer.id = socket.id;
+            if (room.playersGrids[oldId]) {
+                room.playersGrids[socket.id] = room.playersGrids[oldId];
+                delete room.playersGrids[oldId];
+            }
+            if (room.initRevealedCount[oldId] !== undefined) {
+                room.initRevealedCount[socket.id] = room.initRevealedCount[oldId];
+                delete room.initRevealedCount[oldId];
+            }
+            if (room.hostId === oldId) {
+                room.hostId = socket.id;
+            }
+        } else {
+            room.players.push({ id: socket.id, username });
+        }
+
         socket.join(code);
 
         io.to(code).emit('update-players', { players: room.players, hostId: room.hostId });
@@ -106,7 +126,10 @@ io.on('connection', (socket) => {
 
     socket.on('player-action', (data) => {
         const room = rooms[data.roomCode];
-        if (!room) return;
+        if (!room) {
+            socket.emit('error-message', "Salon introuvable ou expiré.");
+            return;
+        }
 
         const { action, index } = data;
         const playerId = socket.id;
@@ -115,11 +138,11 @@ io.on('connection', (socket) => {
             const grid = room.playersGrids[playerId];
             if (grid && grid[index] && !grid[index].isRevealed) {
                 grid[index].isRevealed = true;
-                room.initRevealedCount[playerId]++;
+                room.initRevealedCount[playerId] = (room.initRevealedCount[playerId] || 0) + 1;
 
                 let allDone = true;
                 room.players.forEach(p => {
-                    if (room.initRevealedCount[p.id] < 2) allDone = false;
+                    if ((room.initRevealedCount[p.id] || 0) < 2) allDone = false;
                 });
 
                 if (allDone) {
@@ -193,16 +216,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        for (const code in rooms) {
-            const room = rooms[code];
-            room.players = room.players.filter(p => p.id !== socket.id);
-            if (room.players.length === 0) {
-                delete rooms[code];
-            } else if (room.hostId === socket.id) {
-                room.hostId = room.players[0].id;
-                io.to(code).emit('update-players', { players: room.players, hostId: room.hostId });
-            }
-        }
+        console.log(`Déconnexion : ${socket.id}`);
     });
 });
 
