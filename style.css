@@ -6,6 +6,7 @@
     --card-bg: #1e293b;
     --text-color: #f8fafc;
     --error-color: #ef4444;
+    --success-color: #22c55e;
 }
 
 * {
@@ -26,7 +27,7 @@ body {
 
 #app {
     width: 100%;
-    max-width: 800px;
+    max-width: 900px;
     padding: 20px;
 }
 
@@ -42,11 +43,20 @@ body {
     display: flex;
 }
 
+.card-container-title {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
 .card-container-title h1 {
     font-size: 2.5rem;
     color: var(--primary);
-    margin-bottom: 2rem;
-    text-align: center;
+}
+
+.subtitle {
+    color: #94a3b8;
+    font-size: 1rem;
+    margin-top: 5px;
 }
 
 .menu-box {
@@ -159,33 +169,46 @@ input:focus {
     border-bottom: 1px solid #334155;
 }
 
+/* Écran de Jeu */
 .game-header {
     width: 100%;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 10px;
     align-items: center;
     margin-bottom: 1rem;
     background: var(--card-bg);
-    padding: 10px 15px;
+    padding: 12px 15px;
     border-radius: 8px;
+    text-align: center;
 }
 
-.highlight {
-    color: var(--accent);
+.game-turn-banner {
+    font-size: 1.05rem;
     font-weight: bold;
+    color: var(--accent);
+    background: #0f172a;
+    padding: 8px 15px;
+    border-radius: 6px;
+    width: 100%;
+    border: 1px solid var(--accent);
 }
 
 .game-main {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.2rem;
     align-items: center;
 }
 
 .center-board {
     display: flex;
     gap: 2rem;
+    align-items: center;
+    background: var(--card-bg);
+    padding: 15px 25px;
+    border-radius: 10px;
 }
 
 .deck-area {
@@ -202,14 +225,20 @@ input:focus {
     justify-content: center;
     align-items: center;
     border: 2px dashed #64748b;
-    background: #1e293b;
+    background: #0f172a;
     overflow: hidden;
+    transition: transform 0.2s, border-color 0.2s;
+}
+
+.card-pile:hover {
+    border-color: var(--primary);
+    transform: scale(1.05);
 }
 
 .card-pile img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Empêche l'image de dépasser */
+    object-fit: cover;
 }
 
 .card-back {
@@ -220,9 +249,35 @@ input:focus {
     justify-content: center;
     align-items: center;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: bold;
     color: #cbd5e1;
+    text-align: center;
+}
+
+.card-placeholder {
+    color: #64748b;
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.drawn-card-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    border-left: 2px solid #334155;
+    padding-left: 20px;
+}
+
+.drawn-card-area p {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.card-slot.active-drawn {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
 }
 
 .player-grid-container {
@@ -252,7 +307,7 @@ input:focus {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* TRÈS IMPORTANT : Force l'image à rester dans le cadre */
+    overflow: hidden;
     transition: transform 0.1s, border-color 0.1s;
 }
 
@@ -264,9 +319,54 @@ input:focus {
 .card-slot img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Force l'image à épouser exactement la taille du slot */
+    object-fit: cover;
 }
 
 .card-slot.hidden {
     background: var(--primary-dark);
+}
+
+.opponent-container {
+    width: 100%;
+    background: var(--card-bg);
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.opponents-flex {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    margin-top: 8px;
+}
+
+.opponent-card {
+    background: #0f172a;
+    padding: 10px;
+    border-radius: 6px;
+    min-width: 140px;
+    font-size: 0.85rem;
+    border: 1px solid #334155;
+}
+
+.opponent-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 14px);
+    grid-template-rows: repeat(3, 20px);
+    gap: 2px;
+    margin-top: 6px;
+}
+
+.mini-slot {
+    background: #334155;
+    border-radius: 2px;
+}
+
+.mini-slot.revealed {
+    background: var(--primary);
+}
+
+.scores-box {
+    background: var(--card-bg);
+    padding: 2rem;
 }
