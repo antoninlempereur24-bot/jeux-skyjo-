@@ -6,12 +6,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Servir les fichiers statiques du dossier courant
 app.use(express.static(__dirname));
 
 const rooms = {};
 
-// Générateur de code de salon aléatoire à 4 caractères (ex: 68J7)
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = '';
@@ -21,19 +19,20 @@ function generateRoomCode() {
     return rooms[code] ? generateRoomCode() : code;
 }
 
-// Générateur de paquet Skyjo simplifié
 function createDeck() {
-    // Valeurs typiques du Skyjo : distribution approximative des cartes
-    const values = [-4,-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12,13,20];
+    const cardCounts = {
+        "-4": 5, "-2": 5, "-1": 5, "0": 15,
+        "1": 10, "2": 10, "3": 10, "4": 10, "5": 10, "6": 10,
+        "7": 10, "8": 10, "9": 10, "10": 10, "11": 10, "12": 10, "13": 10,
+        "20": 5
+    };
     let deck = [];
-    values.forEach(val => {
-        // Répétition des cartes selon les règles classiques
-        let count = (val === 0) ? 5 : (val < 0 || val >= 13 ? 2 : 5);
-        for(let i=0; i<count; i++) {
-            deck.push(val.toString());
+    for (let val in cardCounts) {
+        for (let i = 0; i < cardCounts[val]; i++) {
+            deck.push(val);
         }
-    });
-    // Mélange du deck (Fisher-Yates)
+    }
+    // Mélange Fisher-Yates
     for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -44,7 +43,6 @@ function createDeck() {
 io.on('connection', (socket) => {
     console.log(`Utilisateur connecté : ${socket.id}`);
 
-    // Création d'une partie
     socket.on('create-room', (username) => {
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
@@ -55,7 +53,11 @@ io.on('connection', (socket) => {
             deck: [],
             discardPile: [],
             playersGrids: {},
-            turnIndex: 0
+            initRevealedCount: {},
+            turnIndex: 0,
+            turnPhase: 'draw',
+            drawnCard: null,
+            drawnSource: null
         };
 
         socket.join(roomCode);
@@ -66,11 +68,10 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Rejoindre une partie existante via le code à 4 caractères
     socket.on('join-room', ({ username, code }) => {
         const room = rooms[code];
         if (!room) {
-            socket.emit('error-message', "Salon introuvable avec ce code.");
+            socket.emit('error-message', "Salon introuvable.");
             return;
         }
         if (room.status !== 'waiting') {
@@ -93,18 +94,17 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Lancer la partie
     socket.on('start-game', (roomCode) => {
         const room = rooms[roomCode];
         if (!room || room.hostId !== socket.id) return;
 
-        room.status = 'playing';
+        room.status = 'initializing';
         room.deck = createDeck();
         room.discardPile = [room.deck.pop()];
 
-        // Initialisation des grilles 3x4 (12 cartes par joueur, cachées au début)
         room.players.forEach(player => {
             room.playersGrids[player.id] = [];
+            room.initRevealedCount[player.id] = 0;
             for (let i = 0; i < 12; i++) {
                 room.playersGrids[player.id].push({
                     value: room.deck.pop(),
@@ -117,22 +117,99 @@ io.on('connection', (socket) => {
         sendGameState(roomCode);
     });
 
-    // Gestion des actions en jeu (clic sur grille, etc.)
-    socket.on('player-action', ({ roomCode, action, index }) => {
-        const room = rooms[roomCode];
-        if (!room || room.status !== 'playing') return;
+    socket.on('player-action', (data) => {
+        const room = rooms[data.roomCode];
+        if (!room) return;
 
-        const grid = room.playersGrids[socket.id];
-        if (grid && grid[index]) {
-            // Pour l'exemple, révéler la carte cliquée
-            grid[index].isRevealed = true;
-            sendGameState(roomCode);
+        const { action, index } = data;
+        const playerId = socket.id;
+
+        // Phase 1 : Révéler 2 cartes au départ
+        if (room.status === 'initializing') {
+            const grid = room.playersGrids[playerId];
+            if (grid && grid[index] && !grid[index].isRevealed) {
+                grid[index].isRevealed = true;
+                room.initRevealedCount[playerId]++;
+
+                let allDone = true;
+                room.players.forEach(p => {
+                    if (room.initRevealedCount[p.id] < 2) allDone = false;
+                });
+
+                if (allDone) {
+                    room.status = 'playing';
+                    room.turnIndex = 0;
+                    room.turnPhase = 'draw';
+                }
+                sendGameState(roomCode);
+            }
+            return;
+        }
+
+        // Phase 2 : Tour par tour officiel
+        if (room.status === 'playing') {
+            const currentTurnPlayer = room.players[room.turnIndex];
+            if (currentTurnPlayer.id !== playerId) return; // Ce n'est pas ton tour
+
+            // Étape A : Piocher
+            if (room.turnPhase === 'draw') {
+                if (action === 'draw-deck') {
+                    if (room.deck.length === 0) {
+                        const top = room.discardPile.pop();
+                        room.deck = room.discardPile;
+                        room.discardPile = [top];
+                        for (let i = room.deck.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [room.deck[i], room.deck[j]] = [room.deck[j], room.deck[i]];
+                        }
+                    }
+                    if (room.deck.length > 0) {
+                        room.drawnCard = room.deck.pop();
+                        room.drawnSource = 'deck';
+                        room.turnPhase = 'action';
+                    }
+                } else if (action === 'draw-discard') {
+                    if (room.discardPile.length > 0) {
+                        room.drawnCard = room.discardPile.pop();
+                        room.drawnSource = 'discard';
+                        room.turnPhase = 'action';
+                    }
+                }
+                sendGameState(roomCode);
+                return;
+            }
+
+            // Étape B : Action avec la carte piochée
+            if (room.turnPhase === 'action') {
+                const grid = room.playersGrids[playerId];
+
+                if (action === 'place-grid' && grid && grid[index]) {
+                    const oldCard = grid[index].value;
+                    grid[index].value = room.drawnCard;
+                    grid[index].isRevealed = true;
+
+                    room.discardPile.push(oldCard);
+                    room.drawnCard = null;
+                    room.drawnSource = null;
+
+                    nextTurn(room, roomCode);
+                } else if (action === 'discard-drawn' && room.drawnSource === 'deck') {
+                    room.discardPile.push(room.drawnCard);
+                    room.drawnCard = null;
+                    room.drawnSource = null;
+                    room.turnPhase = 'reveal-one';
+                    sendGameState(roomCode);
+                    return;
+                } else if (action === 'reveal-hidden' && room.turnPhase === 'reveal-one' && grid && grid[index] && !grid[index].isRevealed) {
+                    grid[index].isRevealed = true;
+                    room.turnPhase = 'draw';
+                    nextTurn(room, roomCode);
+                }
+            }
         }
     });
 
     socket.on('disconnect', () => {
-        console.log(`Utilisateur déconnecté : ${socket.id}`);
-        // Nettoyage basique des salons vides ou gestion des hôtes déconnectés
         for (const code in rooms) {
             const room = rooms[code];
             room.players = room.players.filter(p => p.id !== socket.id);
@@ -149,16 +226,55 @@ io.on('connection', (socket) => {
     });
 });
 
+function nextTurn(room, roomCode) {
+    let gameEnded = false;
+    room.players.forEach(p => {
+        const grid = room.playersGrids[p.id];
+        if (grid.every(c => c.isRevealed)) {
+            room.status = 'finished';
+            gameEnded = true;
+        }
+    });
+
+    if (gameEnded) {
+        io.to(roomCode).emit('game-over', calculateScores(room));
+        return;
+    }
+
+    room.turnIndex = (room.turnIndex + 1) % room.players.length;
+    room.turnPhase = 'draw';
+    sendGameState(roomCode);
+}
+
+function calculateScores(room) {
+    const scores = {};
+    room.players.forEach(p => {
+        let total = 0;
+        room.playersGrids[p.id].forEach(c => {
+            total += parseInt(c.value, 10);
+        });
+        scores[p.username] = total;
+    });
+    return scores;
+}
+
 function sendGameState(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    const turnPlayer = room.players[room.turnIndex];
+    const currentTurnPlayer = room.players[room.turnIndex];
 
     const gameState = {
-        topDiscard: room.discardPile[room.discardPile.length - 1],
-        turnPlayerName: turnPlayer ? turnPlayer.username : '',
-        playersGrids: room.playersGrids
+        status: room.status,
+        topDiscard: room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null,
+        turnPlayerId: currentTurnPlayer ? currentTurnPlayer.id : null,
+        turnPlayerName: currentTurnPlayer ? currentTurnPlayer.username : '',
+        turnPhase: room.turnPhase,
+        drawnCard: room.drawnCard,
+        drawnSource: room.drawnSource,
+        playersGrids: room.playersGrids,
+        players: room.players,
+        initRevealedCount: room.initRevealedCount
     };
 
     io.to(roomCode).emit('game-state-update', gameState);
