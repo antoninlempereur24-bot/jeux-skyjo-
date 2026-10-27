@@ -43,11 +43,12 @@ io.on('connection', (socket) => {
     console.log(`Connexion : ${socket.id}`);
 
     socket.on('create-room', (username) => {
+        const cleanName = username.trim();
         const roomCode = generateRoomCode();
         rooms[roomCode] = {
             code: roomCode,
             hostId: socket.id,
-            players: [{ id: socket.id, username }],
+            players: [{ id: socket.id, username: cleanName }],
             status: 'waiting',
             deck: [],
             discardPile: [],
@@ -65,34 +66,24 @@ io.on('connection', (socket) => {
 
     socket.on('join-room', ({ username, code }) => {
         const room = rooms[code];
+        const cleanName = username.trim();
         if (!room) {
             socket.emit('error-message', "Salon introuvable.");
             return;
         }
-        if (room.status !== 'waiting') {
-            socket.emit('error-message', "La partie a déjà commencé.");
-            return;
-        }
 
-        // Si le joueur rafraîchit, on met à jour son ID au lieu de dupliquer
-        const existingPlayer = room.players.find(p => p.username.toLowerCase() === username.toLowerCase());
+        const existingPlayer = room.players.find(p => p.username.toLowerCase() === cleanName.toLowerCase());
         if (existingPlayer) {
-            // Transférer l'ancienne grille vers le nouveau socket ID
-            const oldId = existingPlayer.id;
             existingPlayer.id = socket.id;
-            if (room.playersGrids[oldId]) {
-                room.playersGrids[socket.id] = room.playersGrids[oldId];
-                delete room.playersGrids[oldId];
-            }
-            if (room.initRevealedCount[oldId] !== undefined) {
-                room.initRevealedCount[socket.id] = room.initRevealedCount[oldId];
-                delete room.initRevealedCount[oldId];
-            }
-            if (room.hostId === oldId) {
+            if (room.hostId === room.players[0].id) {
                 room.hostId = socket.id;
             }
         } else {
-            room.players.push({ id: socket.id, username });
+            if (room.status !== 'waiting') {
+                socket.emit('error-message', "La partie a déjà commencé.");
+                return;
+            }
+            room.players.push({ id: socket.id, username: cleanName });
         }
 
         socket.join(code);
@@ -110,10 +101,10 @@ io.on('connection', (socket) => {
         room.discardPile = [room.deck.pop()];
 
         room.players.forEach(player => {
-            room.playersGrids[player.id] = [];
-            room.initRevealedCount[player.id] = 0;
+            room.playersGrids[player.username] = [];
+            room.initRevealedCount[player.username] = 0;
             for (let i = 0; i < 12; i++) {
-                room.playersGrids[player.id].push({
+                room.playersGrids[player.username].push({
                     value: room.deck.pop(),
                     isRevealed: false
                 });
@@ -132,17 +123,19 @@ io.on('connection', (socket) => {
         }
 
         const { action, index } = data;
-        const playerId = socket.id;
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) return;
+        const username = player.username;
 
         if (room.status === 'initializing') {
-            const grid = room.playersGrids[playerId];
+            const grid = room.playersGrids[username];
             if (grid && grid[index] && !grid[index].isRevealed) {
                 grid[index].isRevealed = true;
-                room.initRevealedCount[playerId] = (room.initRevealedCount[playerId] || 0) + 1;
+                room.initRevealedCount[username] = (room.initRevealedCount[username] || 0) + 1;
 
                 let allDone = true;
                 room.players.forEach(p => {
-                    if ((room.initRevealedCount[p.id] || 0) < 2) allDone = false;
+                    if ((room.initRevealedCount[p.username] || 0) < 2) allDone = false;
                 });
 
                 if (allDone) {
@@ -157,7 +150,7 @@ io.on('connection', (socket) => {
 
         if (room.status === 'playing') {
             const currentTurnPlayer = room.players[room.turnIndex];
-            if (!currentTurnPlayer || currentTurnPlayer.id !== playerId) return;
+            if (!currentTurnPlayer || currentTurnPlayer.id !== socket.id) return;
 
             if (room.turnPhase === 'draw') {
                 if (action === 'draw-deck') {
@@ -187,7 +180,7 @@ io.on('connection', (socket) => {
             }
 
             if (room.turnPhase === 'action') {
-                const grid = room.playersGrids[playerId];
+                const grid = room.playersGrids[username];
 
                 if (action === 'place-grid' && grid && grid[index]) {
                     const oldCard = grid[index].value;
@@ -223,7 +216,7 @@ io.on('connection', (socket) => {
 function nextTurn(room, roomCode) {
     let gameEnded = false;
     room.players.forEach(p => {
-        const grid = room.playersGrids[p.id];
+        const grid = room.playersGrids[p.username];
         if (grid && grid.every(c => c.isRevealed)) {
             room.status = 'finished';
             gameEnded = true;
@@ -244,8 +237,8 @@ function calculateScores(room) {
     const scores = {};
     room.players.forEach(p => {
         let total = 0;
-        if (room.playersGrids[p.id]) {
-            room.playersGrids[p.id].forEach(c => {
+        if (room.playersGrids[p.username]) {
+            room.playersGrids[p.username].forEach(c => {
                 total += parseInt(c.value, 10);
             });
         }
@@ -260,28 +253,29 @@ function sendGameState(roomCode) {
 
     const currentTurnPlayer = room.players[room.turnIndex];
 
-    const sanitizedGrids = {};
-    for (const pId in room.playersGrids) {
-        sanitizedGrids[pId] = room.playersGrids[pId].map(card => ({
-            isRevealed: card.isRevealed,
-            value: card.isRevealed ? card.value : null
-        }));
-    }
+    // Envoi sécurisé : chaque joueur ne voit que ses propres cartes révélées et les cartes des autres révélées
+    room.players.forEach(p => {
+        const socketGrids = {};
+        room.players.forEach(otherP => {
+            socketGrids[otherP.id] = (room.playersGrids[otherP.username] || []).map(card => ({
+                isRevealed: card.isRevealed,
+                value: card.isRevealed ? card.value : null
+            }));
+        });
 
-    const gameState = {
-        status: room.status,
-        topDiscard: room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null,
-        turnPlayerId: currentTurnPlayer ? currentTurnPlayer.id : null,
-        turnPlayerName: currentTurnPlayer ? currentTurnPlayer.username : '',
-        turnPhase: room.turnPhase,
-        drawnCard: room.drawnCard,
-        drawnSource: room.drawnSource,
-        playersGrids: sanitizedGrids,
-        players: room.players,
-        initRevealedCount: room.initRevealedCount
-    };
-
-    io.to(roomCode).emit('game-state-update', gameState);
+        io.to(p.id).emit('game-state-update', {
+            status: room.status,
+            topDiscard: room.discardPile.length > 0 ? room.discardPile[room.discardPile.length - 1] : null,
+            turnPlayerId: currentTurnPlayer ? currentTurnPlayer.id : null,
+            turnPlayerName: currentTurnPlayer ? currentTurnPlayer.username : '',
+            turnPhase: room.turnPhase,
+            drawnCard: (currentTurnPlayer && currentTurnPlayer.id === p.id) ? room.drawnCard : null,
+            drawnSource: room.drawnSource,
+            playersGrids: socketGrids,
+            players: room.players,
+            initRevealedCount: room.initRevealedCount
+        });
+    });
 }
 
 const PORT = process.env.PORT || 3000;
