@@ -1,24 +1,25 @@
 const socket = io();
 
+// Table de correspondance avec tes liens GitHub
 const CARD_DATA = {
-    "-4": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/1B864298-6436-4BE8-9E4D-9774B5E905F2.PNG",
-    "-2": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/D06DD7EA-9AEC-497D-A931-8F6D0EF24C46.png",
-    "-1": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/8B4DBB36-4CDD-44C6-A679-7F026EE5D4AC.png",
-    "0": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/BC858719-5A8E-48A3-86DF-534976ABFF0E.png",
-    "1": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/431506FA-931A-4438-A65D-D9A38FDBF992.png",
-    "2": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/9CC96367-9451-44F8-910D-46FD8DBD5E0A.png",
-    "3": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/BB7FE10A-1FF4-4291-ACEB-1DF584E9D42B.png",
-    "4": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/7A06B09A-7682-4105-AB22-2377CE85AFCA.png",
-    "5": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/3B317941-1B34-4050-8F78-9D7D2B317C30.png",
-    "6": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/F053B45E-5D3E-482B-917F-8DD663294C2E.png",
-    "7": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/64E4C207-AA86-451E-887B-2025F3BE6185.png",
-    "8": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/41E6B76F-7931-47A7-AEED-396B65F8EAC3.png",
-    "9": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/B8F522EE-C7DA-4291-9FBE-76C7CE7F55A9.png",
-    "10": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/337C2B72-CC66-4EBF-8F5D-6BA021C443A8.png",
-    "11": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/0741C321-130A-437A-AC57-593EE618BB84.png",
-    "12": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/87D4D1A8-972F-44FA-9031-73D65A201046.png",
-    "13": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/BC426F04-D2EF-483D-9788-362E528937FC.PNG",
-    "20": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/88EC9052-8FF3-4418-99F7-12ED97B63188.PNG"
+    "-4": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/1B864298-6436-4BE8-9E4D-9774B5E905F2.PNG?raw=true",
+    "-2": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/D06DD7EA-9AEC-497D-A931-8F6D0EF24C46.png?raw=true",
+    "-1": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/8B4DBB36-4CDD-44C6-A679-7F026EE5D4AC.png?raw=true",
+    "0": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/BC858719-5A8E-48A3-86DF-534976ABFF0E.png?raw=true",
+    "1": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/431506FA-931A-4438-A65D-D9A38FDBF992.png?raw=true",
+    "2": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/9CC96367-9451-44F8-910D-46FD8DBD5E0A.png?raw=true",
+    "3": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/BB7FE10A-1FF4-4291-ACEB-1DF584E9D42B.png?raw=true",
+    "4": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/7A06B09A-7682-4105-AB22-2377CE85AFCA.png?raw=true",
+    "5": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/3B317941-1B34-4050-8F78-9D7D2B317C30.png?raw=true",
+    "6": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/F053B45E-5D3E-482B-917F-8DD663294C2E.png?raw=true",
+    "7": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/64E4C207-AA86-451E-887B-2025F3BE6185.png?raw=true",
+    "8": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/41E6B76F-7931-47A7-AEED-396B65F8EAC3.png?raw=true",
+    "9": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/B8F522EE-C7DA-4291-9FBE-76C7CE7F55A9.png?raw=true",
+    "10": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/337C2B72-CC66-4EBF-8F5D-6BA021C443A8.png?raw=true",
+    "11": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/0741C321-130A-437A-AC57-593EE618BB84.png?raw=true",
+    "12": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/87D4D1A8-972F-44FA-9031-73D65A201046.png?raw=true",
+    "13": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/BC426F04-D2EF-483D-9788-362E528937FC.PNG?raw=true",
+    "20": "https://github.com/antoninlempereur24-bot/cartes-skijo/blob/main/88EC9052-8FF3-4418-99F7-12ED97B63188.PNG?raw=true"
 };
 
 const screens = {
@@ -143,34 +144,38 @@ function renderGame(state) {
     if (state.status === 'initializing') {
         const revealed = state.initRevealedCount[socket.id] || 0;
         if (revealed < 2) {
-            instructionEl.textContent = `Début : Clique sur ${2 - revealed} carte(s) pour les révéler.`;
+            instructionEl.textContent = `Début : Clique sur ${2 - revealed} carte(s) de ta grille pour les révéler.`;
         } else {
             instructionEl.textContent = "En attente des autres joueurs...";
         }
     } else if (state.status === 'playing') {
         if (isMyTurn) {
             if (state.turnPhase === 'draw') {
-                instructionEl.textContent = "Ton tour : Pioche (gauche) ou Défausse (droite).";
+                instructionEl.textContent = "C'est ton tour : Pioche (gauche) ou Défausse (droite).";
             } else if (state.turnPhase === 'action') {
                 instructionEl.textContent = "Clique sur une carte de ta grille pour y placer ta carte.";
             } else if (state.turnPhase === 'reveal-one') {
                 instructionEl.textContent = "Choisis une carte cachée de ta grille à révéler.";
             }
         } else {
-            instructionEl.textContent = `Tour de ${state.turnPlayerName}...`;
+            instructionEl.textContent = `Tour de ${state.turnPlayerName}... Patientez.`;
         }
     }
 
+    // Affichage de la défausse avec sécurité image + texte
     discardPile.innerHTML = '';
     if (state.topDiscard) {
-        discardPile.innerHTML = `<img src="${CARD_DATA[state.topDiscard]}" alt="Défausse">`;
+        const imgUrl = CARD_DATA[state.topDiscard] || '';
+        discardPile.innerHTML = `<img src="${imgUrl}" alt="${state.topDiscard}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none; font-weight:bold; font-size:1.2rem; color:var(--accent);">${state.topDiscard}</span>`;
     } else {
         discardPile.innerHTML = `<div class="card-placeholder">Vide</div>`;
     }
 
+    // Affichage de la carte en main
     if (state.drawnCard && isMyTurn && state.turnPhase === 'action') {
         drawnCardArea.style.display = 'flex';
-        drawnCardSlot.innerHTML = `<img src="${CARD_DATA[state.drawnCard]}" alt="En main">`;
+        const imgUrl = CARD_DATA[state.drawnCard] || '';
+        drawnCardSlot.innerHTML = `<img src="${imgUrl}" alt="${state.drawnCard}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none; font-weight:bold; font-size:1.2rem; color:var(--accent);">${state.drawnCard}</span>`;
         if (state.drawnSource === 'deck') {
             btnDiscardDrawn.style.display = 'block';
         } else {
@@ -180,6 +185,7 @@ function renderGame(state) {
         drawnCardArea.style.display = 'none';
     }
 
+    // Affichage de la grille 3x4 du joueur avec sécurité image + texte
     const gridEl = document.getElementById('player-grid');
     gridEl.innerHTML = '';
 
@@ -187,13 +193,15 @@ function renderGame(state) {
         const slot = document.createElement('div');
         slot.className = `card-slot ${card.isRevealed ? '' : 'hidden'}`;
 
-        if (card.isRevealed && card.value && CARD_DATA[card.value]) {
-            slot.innerHTML = `<img src="${CARD_DATA[card.value]}" alt="${card.value}">`;
+        if (card.isRevealed && card.value) {
+            const imgUrl = CARD_DATA[card.value] || '';
+            slot.innerHTML = `<img src="${imgUrl}" alt="${card.value}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"><span style="display:none; font-weight:bold; font-size:1.3rem; color:var(--accent);">${card.value}</span>`;
         } else {
             slot.innerHTML = `<div class="card-back">?</div>`;
         }
 
-        slot.addEventListener('click', () => {
+        // Gestion du clic / tap tactile
+        slot.onclick = () => {
             if (state.status === 'initializing') {
                 if (!card.isRevealed) {
                     socket.emit('player-action', { roomCode: currentRoom, action: 'reveal-init', index });
@@ -207,11 +215,12 @@ function renderGame(state) {
                     });
                 }
             }
-        });
+        };
 
         gridEl.appendChild(slot);
     });
 
+    // Aperçu des adversaires
     const opponentsContainer = document.getElementById('opponents-list');
     opponentsContainer.innerHTML = '';
     state.players.forEach(p => {
