@@ -141,7 +141,7 @@ function renderGame(state) {
     const myGrid = state.playersGrids[socket.id] || [];
 
     if (state.status === 'initializing') {
-        const revealed = state.initRevealedCount[socket.id] || 0;
+        const revealed = state.initRevealedCount ? (state.initRevealedCount[state.players.find(p=>p.id===socket.id)?.username] || 0) : 0;
         if (revealed < 2) {
             instructionEl.textContent = `Début : Clique sur ${2 - revealed} carte(s) pour les révéler.`;
         } else {
@@ -196,7 +196,6 @@ function renderGame(state) {
             slot.innerHTML = `<div class="card-back">?</div>`;
         }
 
-        // Clic et tactile réactifs
         slot.onclick = () => {
             if (state.status === 'initializing') {
                 if (!card.isRevealed) {
