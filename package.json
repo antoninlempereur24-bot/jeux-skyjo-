@@ -1,12 +1,13 @@
 {
-  "name": "jeux-skyjo",
+  "name": "skyjo-multijoueur",
   "version": "1.0.0",
+  "description": "Jeu de Skyjo multijoueur en ligne",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "socket.io": "^4.7.2"
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
   }
 }
