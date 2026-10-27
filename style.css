@@ -1,5 +1,5 @@
 :root {
-    --primary: #008080; /* Bleu Canard */
+    --primary: #008080;
     --primary-dark: #005f5f;
     --accent: #f4a261;
     --bg-color: #0f172a;
@@ -282,7 +282,6 @@ input:focus {
     max-width: 360px;
 }
 
-/* Grille 3x4 parfaitement dimensionnée pour mobile et PC */
 .grid-3x4 {
     display: grid;
     grid-template-columns: repeat(4, 70px);
