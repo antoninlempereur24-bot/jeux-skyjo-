@@ -1,6 +1,5 @@
 const socket = io();
 
-// Table de correspondance avec les liens RAW de tes images GitHub
 const CARD_DATA = {
     "-4": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/1B864298-6436-4BE8-9E4D-9774B5E905F2.PNG",
     "-2": "https://raw.githubusercontent.com/antoninlempereur24-bot/cartes-skijo/main/D06DD7EA-9AEC-497D-A931-8F6D0EF24C46.png",
@@ -25,7 +24,8 @@ const CARD_DATA = {
 const screens = {
     home: document.getElementById('screen-home'),
     lobby: document.getElementById('screen-lobby'),
-    game: document.getElementById('screen-game')
+    game: document.getElementById('screen-game'),
+    gameover: document.getElementById('screen-gameover')
 };
 
 const usernameInput = document.getElementById('username-input');
@@ -35,6 +35,13 @@ const playersList = document.getElementById('players-list');
 const displayRoomCode = document.getElementById('display-room-code');
 const btnStart = document.getElementById('btn-start');
 const waitMsg = document.getElementById('wait-msg');
+const instructionEl = document.getElementById('game-instruction');
+
+const drawPile = document.getElementById('draw-pile');
+const discardPile = document.getElementById('discard-pile');
+const drawnCardArea = document.getElementById('drawn-card-area');
+const drawnCardSlot = document.getElementById('drawn-card-slot');
+const btnDiscardDrawn = document.getElementById('btn-discard-drawn');
 
 let currentRoom = null;
 let isHost = false;
@@ -46,10 +53,7 @@ function switchScreen(screenName) {
 
 document.getElementById('btn-create').addEventListener('click', () => {
     const username = usernameInput.value.trim();
-    if (!username) {
-        errorMsg.textContent = "Entre un pseudo valide !";
-        return;
-    }
+    if (!username) { errorMsg.textContent = "Entre un pseudo !"; return; }
     errorMsg.textContent = "";
     isHost = true;
     socket.emit('create-room', username);
@@ -58,14 +62,8 @@ document.getElementById('btn-create').addEventListener('click', () => {
 document.getElementById('btn-join').addEventListener('click', () => {
     const username = usernameInput.value.trim();
     const code = roomCodeInput.value.trim().toUpperCase();
-    if (!username) {
-        errorMsg.textContent = "Entre un pseudo valide !";
-        return;
-    }
-    if (code.length !== 4) {
-        errorMsg.textContent = "Le code de salon doit faire 4 caractères.";
-        return;
-    }
+    if (!username) { errorMsg.textContent = "Entre un pseudo !"; return; }
+    if (code.length !== 4) { errorMsg.textContent = "Code à 4 caractères requis."; return; }
     errorMsg.textContent = "";
     isHost = false;
     socket.emit('join-room', { username, code });
@@ -112,26 +110,87 @@ socket.on('game-started', () => {
     switchScreen('game');
 });
 
-socket.on('game-state-update', (gameState) => {
-    renderGame(gameState);
+drawPile.addEventListener('click', () => {
+    socket.emit('player-action', { roomCode: currentRoom, action: 'draw-deck' });
+});
+
+discardPile.addEventListener('click', () => {
+    socket.emit('player-action', { roomCode: currentRoom, action: 'draw-discard' });
+});
+
+btnDiscardDrawn.addEventListener('click', () => {
+    socket.emit('player-action', { roomCode: currentRoom, action: 'discard-drawn' });
+});
+
+socket.on('game-state-update', (state) => {
+    renderGame(state);
+});
+
+socket.on('game-over', (scores) => {
+    switchScreen('gameover');
+    const box = document.getElementById('final-scores');
+    box.innerHTML = '<h3>Scores finaux :</h3><ul>';
+    for (let user in scores) {
+        box.innerHTML += `<li><b>${user}</b> : ${scores[user]} points</li>`;
+    }
+    box.innerHTML += '</ul>';
 });
 
 function renderGame(state) {
-    document.getElementById('hud-turn').textContent = state.turnPlayerName;
+    const isMyTurn = (state.turnPlayerId === socket.id);
+    const myGrid = state.playersGrids[socket.id] || [];
 
-    const discardPile = document.getElementById('discard-pile');
-    if (state.topDiscard) {
-        discardPile.innerHTML = `<img src="${CARD_DATA[state.topDiscard]}" alt="Carte ${state.topDiscard}">`;
+    // Affichage des instructions en haut de l'écran
+    if (state.status === 'initializing') {
+        const revealed = state.initRevealedCount[socket.id] || 0;
+        if (revealed < 2) {
+            instructionEl.textContent = `Début de partie : Clique sur ${2 - revealed} carte(s) de ta grille pour les révéler.`;
+        } else {
+            instructionEl.textContent = "En attente des autres joueurs...";
+        }
+    } else if (state.status === 'playing') {
+        if (isMyTurn) {
+            if (state.turnPhase === 'draw') {
+                instructionEl.textContent = "C'est TON TOUR ! Pioche une carte dans la pioche (gauche) ou dans la défausse (droite).";
+            } else if (state.turnPhase === 'action') {
+                instructionEl.textContent = "Clique sur une carte de ta grille pour y placer ta carte piochée.";
+            } else if (state.turnPhase === 'reveal-one') {
+                instructionEl.textContent = "Tu as jeté ta carte piochée. Clique sur une carte cachée de ta grille pour la révéler !";
+            }
+        } else {
+            instructionEl.textContent = `Tour de ${state.turnPlayerName}... Patientez.`;
+        }
     }
 
+    // Défausse
+    discardPile.innerHTML = '';
+    if (state.topDiscard) {
+        discardPile.innerHTML = `<img src="${CARD_DATA[state.topDiscard]}" alt="Défausse">`;
+    } else {
+        discardPile.innerHTML = `<div class="card-placeholder">Vide</div>`;
+    }
+
+    // Carte en main
+    if (state.drawnCard && isMyTurn && state.turnPhase === 'action') {
+        drawnCardArea.style.display = 'flex';
+        drawnCardSlot.innerHTML = `<img src="${CARD_DATA[state.drawnCard]}" alt="Carte piochée">`;
+        if (state.drawnSource === 'deck') {
+            btnDiscardDrawn.style.display = 'block';
+        } else {
+            btnDiscardDrawn.style.display = 'none';
+        }
+    } else {
+        drawnCardArea.style.display = 'none';
+    }
+
+    // Grille 3x4
     const gridEl = document.getElementById('player-grid');
     gridEl.innerHTML = '';
-    const myGrid = state.playersGrids[socket.id] || [];
 
     myGrid.forEach((card, index) => {
         const slot = document.createElement('div');
         slot.className = `card-slot ${card.isRevealed ? '' : 'hidden'}`;
-        
+
         if (card.isRevealed) {
             slot.innerHTML = `<img src="${CARD_DATA[card.value]}" alt="${card.value}">`;
         } else {
@@ -139,9 +198,43 @@ function renderGame(state) {
         }
 
         slot.addEventListener('click', () => {
-            socket.emit('player-action', { roomCode: currentRoom, action: 'select-grid', index });
+            if (state.status === 'initializing') {
+                if (!card.isRevealed) {
+                    socket.emit('player-action', { roomCode: currentRoom, action: 'reveal-init', index });
+                }
+            } else if (state.status === 'playing' && isMyTurn) {
+                if (state.turnPhase === 'action' || state.turnPhase === 'reveal-one') {
+                    socket.emit('player-action', {
+                        roomCode: currentRoom,
+                        action: state.turnPhase === 'reveal-one' ? 'reveal-hidden' : 'place-grid',
+                        index
+                    });
+                }
+            }
         });
 
         gridEl.appendChild(slot);
+    });
+
+    // Adversaires
+    const opponentsContainer = document.getElementById('opponents-list');
+    opponentsContainer.innerHTML = '';
+    state.players.forEach(p => {
+        if (p.id !== socket.id) {
+            const oppCard = document.createElement('div');
+            oppCard.className = 'opponent-card';
+            oppCard.innerHTML = `<strong>${p.username}</strong>`;
+            
+            const miniGrid = document.createElement('div');
+            miniGrid.className = 'opponent-mini-grid';
+            const oppGrid = state.playersGrids[p.id] || [];
+            oppGrid.forEach(c => {
+                const mini = document.createElement('div');
+                mini.className = `mini-slot ${c.isRevealed ? 'revealed' : ''}`;
+                miniGrid.appendChild(mini);
+            });
+            oppCard.appendChild(miniGrid);
+            opponentsContainer.appendChild(oppCard);
+        }
     });
 }
