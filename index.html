@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skyjo Multijoueur</title>
+    <title>Skyjo Multijoueur - Complet</title>
     <link rel="stylesheet" href="style.css">
     <script src="/socket.io/socket.io.js"></script>
 </head>
@@ -13,6 +13,7 @@
         <div id="screen-home" class="screen active">
             <div class="card-container-title">
                 <h1>SKYJO MULTIJOUEUR</h1>
+                <p class="subtitle">Le vrai jeu avec règles officielles</p>
             </div>
             <div class="menu-box">
                 <input type="text" id="username-input" placeholder="Ton pseudo..." maxlength="12">
@@ -41,28 +42,49 @@
         <!-- ÉCRAN DE JEU -->
         <div id="screen-game" class="screen">
             <header class="game-header">
-                <div class="game-info">Salon: <span id="hud-room">----</span> | Tour de: <span id="hud-turn" class="highlight">---</span></div>
+                <div class="game-info">Salon : <span id="hud-room">----</span></div>
+                <!-- Bandeau d'instructions pour guider les joueurs à chaque étape -->
+                <div class="game-turn-banner" id="game-instruction">Chargement...</div>
             </header>
 
             <main class="game-main">
-                <!-- Zone Centrale : Pioche et Défausse -->
+                <!-- Zone Centrale : Pioche, Défausse et Carte en main -->
                 <div class="center-board">
                     <div class="deck-area">
-                        <div class="card-pile" id="draw-pile" title="Pioche">
-                            <div class="card-back">SKYJO</div>
+                        <div class="card-pile" id="draw-pile" title="Piocher une carte cachée">
+                            <div class="card-back">PIOCHE</div>
                         </div>
-                        <div class="card-pile" id="discard-pile" title="Défausse">
-                            <!-- Carte active de la défausse -->
+                        <div class="card-pile" id="discard-pile" title="Prendre la carte de la défausse">
+                            <div class="card-placeholder">Défausse</div>
                         </div>
+                    </div>
+                    <!-- Carte piochée en attente d'être placée -->
+                    <div class="drawn-card-area" id="drawn-card-area" style="display:none;">
+                        <p>Carte en main :</p>
+                        <div id="drawn-card-slot" class="card-slot active-drawn"></div>
+                        <button id="btn-discard-drawn" class="btn secondary" style="display:none;">Jeter cette carte</button>
                     </div>
                 </div>
 
-                <!-- Grille du joueur (12 cartes : 3 lignes x 4 colonnes) -->
+                <!-- Grille du joueur (3x4) -->
                 <div class="player-grid-container">
                     <h3>Ta Grille (3x4)</h3>
                     <div id="player-grid" class="grid-3x4"></div>
                 </div>
+
+                <!-- Autres joueurs -->
+                <div class="opponent-container">
+                    <h3>Autres joueurs</h3>
+                    <div id="opponents-list" class="opponents-flex"></div>
+                </div>
             </main>
+        </div>
+
+        <!-- ÉCRAN DE FIN -->
+        <div id="screen-gameover" class="screen">
+            <h2>Fin de la Partie !</h2>
+            <div id="final-scores" class="scores-box"></div>
+            <button class="btn primary" onclick="location.reload()">Rejouer</button>
         </div>
     </div>
 
