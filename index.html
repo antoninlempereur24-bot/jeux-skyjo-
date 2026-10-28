@@ -1,92 +1,117 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Skyjo Multijoueur</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="/socket.io/socket.io.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1120">
+  <title>Skyjo en ligne</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div id="app">
-        <!-- ÉCRAN D'ACCUEIL -->
-        <div id="screen-home" class="screen active">
-            <div class="card-container-title">
-                <h1>SKYJO</h1>
-                <p class="subtitle">Multijoueur en ligne</p>
-            </div>
-            <div class="menu-box">
-                <input type="text" id="username-input" placeholder="Ton pseudo..." maxlength="12">
-                <div class="menu-buttons">
-                    <button id="btn-create" class="btn primary">Créer une partie</button>
-                    <div class="join-section">
-                        <input type="text" id="room-code-input" placeholder="CODE (ex: 68J7)" maxlength="4">
-                        <button id="btn-join" class="btn secondary">Rejoindre</button>
-                    </div>
-                </div>
-                <p id="error-msg" class="error"></p>
-            </div>
+  <div id="conn" class="conn hidden">Connexion perdue… reconnexion en cours</div>
+  <div id="toasts" class="toasts"></div>
+
+  <!-- ACCUEIL -->
+  <section id="screen-home" class="screen active">
+    <div class="panel home-panel">
+      <h1 class="logo">SKY<span>JO</span></h1>
+      <p class="tagline">Le jeu de cartes où le plus petit score gagne</p>
+
+      <label class="field">
+        <span>Ton pseudo</span>
+        <input id="inp-username" type="text" maxlength="14" placeholder="Ex : Alex" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </label>
+
+      <button id="btn-create" class="btn primary big">Créer un salon</button>
+
+      <div class="sep"><span>ou</span></div>
+
+      <label class="field">
+        <span>Code du salon (4 caractères)</span>
+        <input id="inp-code" type="text" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters" spellcheck="false" class="code-input">
+      </label>
+      <button id="btn-join" class="btn secondary big">Rejoindre le salon</button>
+
+      <p class="rules-hint">2 à 8 joueurs · Retourne tes cartes, échange-les, et fais le moins de points possible !</p>
+    </div>
+  </section>
+
+  <!-- LOBBY -->
+  <section id="screen-lobby" class="screen">
+    <div class="panel lobby-panel">
+      <h2>Salon d'attente</h2>
+      <div class="room-code-box">
+        <span class="label">Code du salon</span>
+        <button id="btn-copy" class="room-code" title="Copier le code">----</button>
+        <span class="small-hint">Touche le code pour le copier et le partager</span>
+      </div>
+
+      <h3>Joueurs <span id="lobby-count" class="badge">0</span></h3>
+      <ul id="lobby-players" class="player-list"></ul>
+
+      <p id="lobby-hint" class="hint"></p>
+      <button id="btn-start" class="btn primary big hidden">Lancer la partie</button>
+      <button id="btn-leave-lobby" class="btn ghost">Quitter le salon</button>
+    </div>
+  </section>
+
+  <!-- JEU -->
+  <section id="screen-game" class="screen">
+    <header class="topbar">
+      <div class="game-name" id="game-name">Partie</div>
+      <div class="top-right">
+        <span class="chip" id="game-code">----</span>
+        <button id="btn-leave-game" class="btn tiny ghost" title="Quitter la partie">Quitter</button>
+      </div>
+    </header>
+
+    <div id="banner" class="banner">…</div>
+    <div id="event-log" class="event-log"></div>
+
+    <div id="others" class="others"></div>
+
+    <div class="table">
+      <div class="piles">
+        <div class="pile-wrap">
+          <div id="deck" class="pile-slot" data-role="deck"></div>
+          <span class="pile-label">Pioche</span>
         </div>
-
-        <!-- SALON D'ATTENTE (LOBBY) -->
-        <div id="screen-lobby" class="screen">
-            <h2>Salon : <span id="display-room-code">----</span></h2>
-            <div class="lobby-info">
-                <h3>Joueurs connectés :</h3>
-                <ul id="players-list"></ul>
-            </div>
-            <button id="btn-start" class="btn primary" style="display:none;">Lancer la partie</button>
-            <p id="wait-msg">En attente de l'hôte pour lancer la partie...</p>
+        <div class="pile-wrap">
+          <div id="discard" class="pile-slot" data-role="discard"></div>
+          <span class="pile-label">Défausse</span>
         </div>
-
-        <!-- ÉCRAN DE JEU -->
-        <div id="screen-game" class="screen">
-            <header class="game-header">
-                <div class="game-info">Salon : <span id="hud-room">----</span></div>
-                <div class="game-turn-banner" id="game-instruction">Chargement...</div>
-            </header>
-
-            <main class="game-main">
-                <!-- Zone Centrale : Pioche, Défausse et Carte en main -->
-                <div class="center-board">
-                    <div class="deck-area">
-                        <div class="card-pile" id="draw-pile" title="Piocher une carte">
-                            <div class="card-back">PIOCHE</div>
-                        </div>
-                        <div class="card-pile" id="discard-pile" title="Prendre la défausse">
-                            <div class="card-placeholder">Défausse</div>
-                        </div>
-                    </div>
-                    <!-- Carte piochée en attente d'action -->
-                    <div class="drawn-card-area" id="drawn-card-area" style="display:none;">
-                        <p>En main :</p>
-                        <div id="drawn-card-slot" class="card-slot active-drawn"></div>
-                        <button id="btn-discard-drawn" class="btn secondary" style="display:none;">Jeter</button>
-                    </div>
-                </div>
-
-                <!-- Grille du joueur (3x4) -->
-                <div class="player-grid-container">
-                    <h3>Ta Grille (3x4)</h3>
-                    <div id="player-grid" class="grid-3x4"></div>
-                </div>
-
-                <!-- Autres joueurs -->
-                <div class="opponent-container">
-                    <h3>Autres joueurs</h3>
-                    <div id="opponents-list" class="opponents-flex"></div>
-                </div>
-            </main>
+        <div class="pile-wrap">
+          <div id="hand" class="pile-slot hand-slot"></div>
+          <span class="pile-label" id="hand-label">Main</span>
+          <button id="btn-discard-drawn" class="btn tiny warn hidden">Jeter la carte</button>
         </div>
-
-        <!-- ÉCRAN DE FIN -->
-        <div id="screen-gameover" class="screen">
-            <h2>Fin de la Partie !</h2>
-            <div id="final-scores" class="scores-box"></div>
-            <button class="btn primary" onclick="location.reload()">Rejouer</button>
-        </div>
+      </div>
     </div>
 
-    <script src="script.js"></script>
+    <div class="me-zone" id="me-zone">
+      <div class="me-head">
+        <span id="me-name" class="me-name"></span>
+        <span id="me-score" class="chip score-chip"></span>
+      </div>
+      <div id="my-board" class="board my-board"></div>
+    </div>
+  </section>
+
+  <!-- FIN -->
+  <section id="screen-end" class="screen">
+    <div class="panel end-panel">
+      <h2>Manche terminée !</h2>
+      <p id="end-game-name" class="tagline"></p>
+      <p id="end-finisher" class="hint"></p>
+      <ol id="end-ranking" class="ranking"></ol>
+      <div id="end-boards" class="end-boards"></div>
+      <button id="btn-replay" class="btn primary big hidden">Rejouer (retour au salon)</button>
+      <p id="end-wait" class="hint hidden">En attente de l'hôte pour rejouer…</p>
+      <button id="btn-leave-end" class="btn ghost">Quitter</button>
+    </div>
+  </section>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script.js"></script>
 </body>
 </html>
