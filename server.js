@@ -1,15 +1,12 @@
-
-Claude
-Server · JS
 const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
- 
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
- 
+
 // ---------------------------------------------------------------------------
 // Fichiers statiques (on n'expose que les 3 fichiers du client)
 // ---------------------------------------------------------------------------
@@ -17,7 +14,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/index.html', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.get('/style.css', (req, res) => res.sendFile(path.join(__dirname, 'style.css')));
 app.get('/script.js', (req, res) => res.sendFile(path.join(__dirname, 'script.js')));
- 
+
 // ---------------------------------------------------------------------------
 // Constantes
 // ---------------------------------------------------------------------------
@@ -29,11 +26,11 @@ const ROWS = 3;
 const BOT_DELAY_MS = 15000;      // délai avant auto-jeu d'un joueur déconnecté
 const LOBBY_GRACE_MS = 6000;     // délai avant retrait d'un joueur déconnecté du salon
 const EMPTY_ROOM_MS = 120000;    // suppression d'un salon sans connexion
- 
+
 // Composition du paquet (cartes -4, 13 et 20 en plus du jeu classique)
 const CARD_COUNTS = { '-4': 3, '-2': 5, '-1': 10, '0': 15, '13': 5, '20': 2 };
 for (let v = 1; v <= 12; v++) CARD_COUNTS[String(v)] = 10;
- 
+
 const GAME_NAMES = [
   'La Bataille des As',
   "Le Duel de l'Extrême",
@@ -51,14 +48,14 @@ const GAME_NAMES = [
   'Le Sommet des Stratèges',
   'Le Combat des Cartes #'
 ];
- 
+
 // ---------------------------------------------------------------------------
 // État global : rooms[code]
 // Toutes les données de joueurs sont indexées par PSEUDO (username),
 // jamais par socket.id.
 // ---------------------------------------------------------------------------
 const rooms = {};
- 
+
 function makeRoom(code, host) {
   return {
     code,
@@ -81,7 +78,7 @@ function makeRoom(code, host) {
     cleanupTimer: null
   };
 }
- 
+
 // ---------------------------------------------------------------------------
 // Utilitaires
 // ---------------------------------------------------------------------------
@@ -92,7 +89,7 @@ function shuffle(arr) {
   }
   return arr;
 }
- 
+
 function buildDeck() {
   const deck = [];
   for (const [val, count] of Object.entries(CARD_COUNTS)) {
@@ -100,7 +97,7 @@ function buildDeck() {
   }
   return shuffle(deck);
 }
- 
+
 function makeCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   for (let attempt = 0; attempt < 200; attempt++) {
@@ -110,25 +107,25 @@ function makeCode() {
   }
   return null;
 }
- 
+
 function randomGameName() {
   const base = GAME_NAMES[Math.floor(Math.random() * GAME_NAMES.length)];
   if (base.endsWith('#')) return base + (1 + Math.floor(Math.random() * 99));
   return base;
 }
- 
+
 function cleanName(name) {
   return String(name || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 14);
 }
- 
+
 function isValidIndex(i) {
   return Number.isInteger(i) && i >= 0 && i < GRID_SIZE;
 }
- 
+
 function connectedCount(room) {
   return room.players.filter(u => room.sockets[u]).length;
 }
- 
+
 // ---------------------------------------------------------------------------
 // Vue envoyée aux clients (les valeurs des cartes cachées ne sortent jamais)
 // ---------------------------------------------------------------------------
@@ -136,7 +133,7 @@ function visibleScore(grid) {
   if (!grid) return 0;
   return grid.reduce((s, c) => (c.revealed && !c.removed ? s + c.value : s), 0);
 }
- 
+
 function viewFor(room, me) {
   const cur = room.phase === 'playing' ? room.players[room.turnIndex] : null;
   return {
@@ -172,7 +169,7 @@ function viewFor(room, me) {
     finisher: room.finisher
   };
 }
- 
+
 function broadcast(room) {
   for (const u of room.players) {
     const sid = room.sockets[u];
@@ -180,11 +177,11 @@ function broadcast(room) {
   }
   scheduleBot(room);
 }
- 
+
 function toast(socket, msg, type = 'error') {
   socket.emit('toast', { type, msg });
 }
- 
+
 // ---------------------------------------------------------------------------
 // Logique de jeu
 // ---------------------------------------------------------------------------
@@ -200,7 +197,7 @@ function startGame(room) {
   room.drawnCard = null;
   room.turnPhase = 'draw';
   room.turnIndex = 0;
- 
+
   for (const u of room.players) {
     const grid = [];
     for (let i = 0; i < GRID_SIZE; i++) {
@@ -212,7 +209,7 @@ function startGame(room) {
   room.discard.push(room.deck.pop());
   room.lastEvent = `Début de « ${room.gameName} » ! Chacun retourne 2 cartes.`;
 }
- 
+
 function backToLobby(room, msg) {
   room.phase = 'lobby';
   room.playersGrids = {};
@@ -227,12 +224,12 @@ function backToLobby(room, msg) {
   room.gameName = '';
   room.lastEvent = msg || '';
 }
- 
+
 function checkInitDone(room) {
   if (room.phase !== 'init') return;
   const allReady = room.players.every(u => (room.initRevealedCount[u] || 0) >= 2);
   if (!allReady) return;
- 
+
   // Le joueur ayant la plus grande somme de cartes visibles commence
   let best = -Infinity;
   let bestIdx = 0;
@@ -245,7 +242,7 @@ function checkInitDone(room) {
   room.phase = 'playing';
   room.lastEvent = `${room.players[bestIdx]} commence (plus grosse somme visible : ${best}).`;
 }
- 
+
 function ensureDeck(room) {
   if (room.deck.length > 0) return true;
   if (room.discard.length <= 1) return false;
@@ -255,7 +252,7 @@ function ensureDeck(room) {
   room.lastEvent = 'La pioche est vide : la défausse est mélangée.';
   return room.deck.length > 0;
 }
- 
+
 // Élimine les colonnes de 3 cartes identiques visibles
 function checkColumns(room, username) {
   const grid = room.playersGrids[username];
@@ -271,11 +268,11 @@ function checkColumns(room, username) {
     }
   }
 }
- 
+
 function allDone(grid) {
   return grid.every(c => c.revealed || c.removed);
 }
- 
+
 function endRound(room, finisher) {
   room.phase = 'ended';
   room.finisher = finisher;
@@ -292,13 +289,13 @@ function endRound(room, finisher) {
   room.scores = scores;
   room.lastEvent = `${finisher} a retourné toute sa grille : fin de manche !`;
 }
- 
+
 function nextTurn(room) {
   room.turnIndex = (room.turnIndex + 1) % room.players.length;
   room.turnPhase = 'draw';
   room.drawnCard = null;
 }
- 
+
 function afterAction(room, username) {
   checkColumns(room, username);
   if (allDone(room.playersGrids[username])) {
@@ -307,14 +304,14 @@ function afterAction(room, username) {
     nextTurn(room);
   }
 }
- 
+
 function randomHiddenIndex(grid) {
   const hidden = [];
   grid.forEach((c, i) => { if (!c.revealed && !c.removed) hidden.push(i); });
   if (!hidden.length) return -1;
   return hidden[Math.floor(Math.random() * hidden.length)];
 }
- 
+
 // Actions automatiques pour un joueur déconnecté qui bloque la partie
 function autoStep(room) {
   if (room.phase === 'init') {
@@ -331,12 +328,12 @@ function autoStep(room) {
     checkInitDone(room);
     return;
   }
- 
+
   if (room.phase !== 'playing') return;
   const u = room.players[room.turnIndex];
   if (room.sockets[u]) return;
   const grid = room.playersGrids[u];
- 
+
   if (room.turnPhase === 'draw') {
     if (!ensureDeck(room)) { nextTurn(room); return; }
     room.drawnCard = room.deck.pop();
@@ -366,7 +363,7 @@ function autoStep(room) {
     afterAction(room, u);
   }
 }
- 
+
 function needsBot(room) {
   if (room.phase === 'init') {
     return room.players.some(u => !room.sockets[u] && (room.initRevealedCount[u] || 0) < 2);
@@ -376,7 +373,7 @@ function needsBot(room) {
   }
   return false;
 }
- 
+
 function scheduleBot(room) {
   if (room.botTimer) { clearTimeout(room.botTimer); room.botTimer = null; }
   if (!rooms[room.code] || !needsBot(room)) return;
@@ -387,7 +384,7 @@ function scheduleBot(room) {
     broadcast(room);
   }, BOT_DELAY_MS);
 }
- 
+
 // ---------------------------------------------------------------------------
 // Gestion des joueurs / salons
 // ---------------------------------------------------------------------------
@@ -398,18 +395,18 @@ function removePlayer(room, username) {
   delete room.sockets[username];
   delete room.playersGrids[username];
   delete room.initRevealedCount[username];
- 
+
   if (room.players.length === 0) {
     if (room.botTimer) clearTimeout(room.botTimer);
     if (room.cleanupTimer) clearTimeout(room.cleanupTimer);
     delete rooms[room.code];
     return;
   }
- 
+
   if (room.host === username) {
     room.host = room.players.find(p => room.sockets[p]) || room.players[0];
   }
- 
+
   if (room.phase === 'init' || room.phase === 'playing' || room.phase === 'ended') {
     if (room.phase !== 'ended' && room.players.length < MIN_PLAYERS) {
       backToLobby(room, 'Pas assez de joueurs : retour au salon.');
@@ -429,7 +426,7 @@ function removePlayer(room, username) {
   room.lastEvent = `${username} a quitté la partie.`;
   broadcast(room);
 }
- 
+
 function clearSocketBinding(socket) {
   const { username, code } = socket.data || {};
   if (!code) return;
@@ -437,26 +434,26 @@ function clearSocketBinding(socket) {
   socket.data.username = null;
   socket.data.code = null;
 }
- 
+
 function withRoom(socket, fn) {
   const username = socket.data.username;
   const room = rooms[socket.data.code];
   if (!room || !username || !room.players.includes(username) || room.sockets[username] !== socket.id) return;
   fn(room, username);
 }
- 
+
 // ---------------------------------------------------------------------------
 // Socket.io
 // ---------------------------------------------------------------------------
 io.on('connection', (socket) => {
   socket.data = { username: null, code: null };
- 
+
   socket.on('join', (payload, cb) => {
     const reply = typeof cb === 'function' ? cb : () => {};
     payload = payload || {};
     const username = cleanName(payload.username);
     if (!username) return reply({ error: 'Entre un pseudo.' });
- 
+
     // Si ce socket était déjà dans un autre salon, on le détache proprement
     if (socket.data.code && (socket.data.code !== String(payload.code || '').toUpperCase() || socket.data.username !== username)) {
       const oldRoom = rooms[socket.data.code];
@@ -468,7 +465,7 @@ io.on('connection', (socket) => {
       }
       clearSocketBinding(socket);
     }
- 
+
     let room;
     if (payload.create) {
       const code = makeCode();
@@ -481,7 +478,7 @@ io.on('connection', (socket) => {
       room = rooms[code];
       if (!room) return reply({ error: 'Salon introuvable.' });
     }
- 
+
     const exists = room.players.includes(username);
     if (exists) {
       const oldSid = room.sockets[username];
@@ -498,19 +495,19 @@ io.on('connection', (socket) => {
       if (room.players.length >= MAX_PLAYERS) return reply({ error: 'Le salon est plein (8 joueurs max).' });
       room.players.push(username);
     }
- 
+
     room.sockets[username] = socket.id;
     socket.data.username = username;
     socket.data.code = room.code;
     socket.join(room.code);
- 
+
     if (room.cleanupTimer) { clearTimeout(room.cleanupTimer); room.cleanupTimer = null; }
     if (!exists) room.lastEvent = `${username} a rejoint le salon.`;
- 
+
     reply({ ok: true, code: room.code, username });
     broadcast(room);
   });
- 
+
   socket.on('leaveRoom', () => {
     const username = socket.data.username;
     const room = rooms[socket.data.code];
@@ -521,7 +518,7 @@ io.on('connection', (socket) => {
       clearSocketBinding(socket);
     }
   });
- 
+
   socket.on('startGame', () => {
     withRoom(socket, (room, u) => {
       if (room.host !== u) return toast(socket, "Seul l'hôte peut lancer la partie.");
@@ -531,7 +528,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('playAgain', () => {
     withRoom(socket, (room, u) => {
       if (room.host !== u) return toast(socket, "Seul l'hôte peut relancer.");
@@ -540,7 +537,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('revealInit', (data) => {
     withRoom(socket, (room, u) => {
       if (room.phase !== 'init') return;
@@ -555,7 +552,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('drawDeck', () => {
     withRoom(socket, (room, u) => {
       if (room.phase !== 'playing' || room.players[room.turnIndex] !== u || room.turnPhase !== 'draw') return;
@@ -566,7 +563,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('takeDiscard', () => {
     withRoom(socket, (room, u) => {
       if (room.phase !== 'playing' || room.players[room.turnIndex] !== u || room.turnPhase !== 'draw') return;
@@ -577,7 +574,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('placeCard', (data) => {
     withRoom(socket, (room, u) => {
       if (room.phase !== 'playing' || room.players[room.turnIndex] !== u) return;
@@ -596,7 +593,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('discardDrawn', () => {
     withRoom(socket, (room, u) => {
       if (room.phase !== 'playing' || room.players[room.turnIndex] !== u) return;
@@ -608,7 +605,7 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('flipCard', (data) => {
     withRoom(socket, (room, u) => {
       if (room.phase !== 'playing' || room.players[room.turnIndex] !== u || room.turnPhase !== 'flip') return;
@@ -622,14 +619,14 @@ io.on('connection', (socket) => {
       broadcast(room);
     });
   });
- 
+
   socket.on('disconnect', () => {
     const username = socket.data.username;
     const room = rooms[socket.data.code];
     if (!room || !username) return;
     if (room.sockets[username] !== socket.id) return; // déjà remplacé par une reconnexion
     delete room.sockets[username];
- 
+
     if (room.phase === 'lobby') {
       // laisse un court délai (rafraîchissement de page)
       setTimeout(() => {
@@ -639,12 +636,12 @@ io.on('connection', (socket) => {
         }
       }, LOBBY_GRACE_MS);
     }
- 
+
     if (room.host === username) {
       const other = room.players.find(p => p !== username && room.sockets[p]);
       if (other && room.phase === 'lobby') room.host = other;
     }
- 
+
     if (connectedCount(room) === 0) {
       if (room.botTimer) { clearTimeout(room.botTimer); room.botTimer = null; }
       if (room.cleanupTimer) clearTimeout(room.cleanupTimer);
@@ -660,12 +657,8 @@ io.on('connection', (socket) => {
     broadcast(room);
   });
 });
- 
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Skyjo : serveur démarré sur http://localhost:${PORT}`);
 });
- 
-Claude a terminé sa réponse.
-
-    
