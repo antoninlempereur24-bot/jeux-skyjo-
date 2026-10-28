@@ -1,7 +1,8 @@
+
 {
   "name": "skyjo-multijoueur",
   "version": "1.0.0",
-  "description": "Jeu de Skyjo multijoueur en ligne",
+  "description": "Jeu de Skyjo multijoueur en temps réel (Node.js, Express, Socket.io)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
